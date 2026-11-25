@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace OpenMapDownloader
@@ -7,7 +6,7 @@ namespace OpenMapDownloader
 	public partial class Downloader : Form
 	{
 		private List<MapTile> mapTiles = new();
-		private List<MapTile> notLoadedMapTiles = new();
+		private static readonly HttpClient Client = new();
 
 		public Downloader()
 		{
@@ -47,7 +46,6 @@ namespace OpenMapDownloader
 							url = url.Replace("{x}", mapTile.X.ToString())
 								.Replace("{y}", mapTile.Y.ToString())
 								.Replace("{z}", mapTile.Z.ToString());
-							var uri = new Uri(url);
 
 							var dirName = $@"Out\{mapTile.Z}\{mapTile.X}\";
 							Directory.CreateDirectory(dirName);
@@ -66,12 +64,11 @@ namespace OpenMapDownloader
 
 							try
 							{
-								using var client = new HttpClient();
-								var response = await client.GetAsync(url, token);
+								using var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
 
 								if (response.IsSuccessStatusCode)
 								{
-									await using var s = await client.GetStreamAsync(uri, token);
+									await using var s = await response.Content.ReadAsStreamAsync(token);
 									await using var fs = new FileStream(fileName, FileMode.CreateNew);
 									await s.CopyToAsync(fs, token);
 									Log(fileName + "[] Saved");
